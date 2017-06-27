@@ -33,18 +33,6 @@ defmodule PicoCD.Resource.Filesystem do
             _ -> {:error, nil}
         end
     end
-
-    def read(%Filesystem{:path => path}) do
-        {:ok, path}
-    end
-
-    def write(%Filesystem{:path => path}, object) do
-        {:ok, {path, object}}
-    end
-
-    def close(_) do
-        {:ok, true}
-    end
 end
 
 defimpl PicoCD.UseResource, for: PicoCD.Resource.Filesystem do
@@ -58,5 +46,8 @@ defimpl PicoCD.UseResource, for: PicoCD.Resource.Filesystem do
     def write(%Filesystem{:path => path}, object) do
         {:ok, {path, object}}
     end
-end
 
+    def close(_) do
+        {:ok, nil}
+    end
+end

@@ -3,90 +3,117 @@ defmodule PicoCD do
   Documentation for PicoCD.
   """
 
-  def init_plain do
+  use Application
+
+  alias PicoCD.Resource.Filesystem, as: Filesystem
+  alias PicoCD.TaskServer.Supervisor, as: TaskServerSupervisor
+  alias PicoCD.TaskServer, as: TaskServer
+
+  def start(_type, _args) do
+
+    IO.puts(
+      ~s"""
+
+
+      Initializing:
+      -------------
+
+      """)
+
     # Create two resources
-    path1 = new_tmp_dir()
-    {:ok, resource1} = PicoCD.Resource.Filesystem.init('From', %{:path => path1})
-    IO.puts('#{inspect resource1}')
+    path1 = mk_dir()
+    name1 = 'resource1'
+    {:ok, resource1} = Filesystem.init(name1, %{:path => path1})
+    IO.puts('#{name1}: #{inspect resource1}')
 
-    path2 = new_tmp_dir()
-    {:ok, resource2} = PicoCD.Resource.Filesystem.init('To', %{:path => path2})
-    IO.puts('#{inspect resource2}')
+    path2 = mk_dir()
+    name2 = 'resource2'
+    {:ok, resource2} = Filesystem.init(name2, %{:path => path2})
+    IO.puts('#{name2}: #{inspect resource2}')
 
-    {:ok, pid} = GenServer.start_link(PicoCD.TaskServer, [resource1, resource2])
-
-    res1 = GenServer.call(pid, :copy)
-    IO.puts('Res1 #{inspect res1}')
-
-    res2 = GenServer.cast(pid, :copy)
-    IO.puts('Res2 #{inspect res2}')
+    resources = [resource1, resource2]
     
-    GenServer.stop(pid)
+    {:ok, supervisor_pid} = TaskServerSupervisor.start_link(resources)
+    IO.puts('Supervisor: #{inspect supervisor_pid}')
 
-    res3 = wipe_dir(path1)
-    IO.puts('#{inspect res3}')
-    res4 = wipe_dir(path2)
-    IO.puts('#{inspect res4}')
-  end
+    supervised_children = Supervisor.which_children(supervisor_pid)
+    IO.puts('Supervised: #{inspect supervised_children}')
 
-  def init_with_monitor do
-    # Create two resources
-    path1 = new_tmp_dir()
-    {:ok, resource1} = PicoCD.Resource.Filesystem.init('From', %{:path => path1})
-    IO.puts('#{inspect resource1}')
+    task_server_pid = Process.whereis(PicoCD.TaskServer)
+    IO.puts('Task Server: #{inspect task_server_pid}')
 
-    path2 = new_tmp_dir()
-    {:ok, resource2} = PicoCD.Resource.Filesystem.init('To', %{:path => path2})
-    IO.puts('#{inspect resource2}')
+    IO.puts(
+      ~s"""
 
-    {:ok, pid} = GenServer.start_link(PicoCD.TaskServer, [resource1, resource2])
-    reference = Process.monitor(pid)
 
-    IO.puts('#{inspect reference}')
+      Copy from #{name1} to #{name2} and then clear #{name1}:
+      ----------------------------------------------------------
 
-    res1 = GenServer.call(pid, :copy)
-    IO.puts('Res1 #{inspect res1}')
+      """)
 
-    res2 = GenServer.cast(pid, :copy)
-    IO.puts('Res2 #{inspect res2}')
+    res = TaskServer.run_task({:cp, {name1, name2}})
+    IO.puts('Copy #{inspect res}')
+
+    res = TaskServer.run_task({:ls, name1})
+    IO.puts('List #{inspect res}')
+
+    res = TaskServer.run_task({:clear, name1})
+    IO.puts('Clear #{inspect res}')
+
+    res = TaskServer.run_task({:ls, name1})
+    IO.puts('List #{inspect res}')
+
+    IO.puts(
+      ~s"""
+
+
+      Copy from #{name2} to #{name1} and then clear #{name2}:
+      ----------------------------------------------------------
+
+      """)
+
+    res = TaskServer.run_task_async({:cp, {name2, name1}})
+    IO.puts('Copy #{inspect res}')
+
+    res = TaskServer.run_task_async({:ls, name2})
+    IO.puts('List #{inspect res}')
+
+    res = TaskServer.run_task_async({:clear, name2})
+    IO.puts('Clear #{inspect res}')
+
+    res = TaskServer.run_task_async({:ls, name2})
+    IO.puts('List #{inspect res}')
     
-    GenServer.stop(pid)
+    IO.puts(
+      ~s"""
 
-    res3 = wipe_dir(path1)
-    IO.puts('#{inspect res3}')
-    res4 = wipe_dir(path2)
-    IO.puts('#{inspect res4}')
+
+      Cleaning up:
+      ------------
+
+      """)
+
+    IO.puts('Stopping task server')
+    TaskServer.stop()
+
+    IO.puts('Removing #{name1}:')
+    res = rm_dir(path1)
+    IO.puts('#{inspect res}')
+    
+    IO.puts('Removing #{name2}:')
+    res = rm_dir(path2)
+    IO.puts('#{inspect res}')
+    
   end
 
-  def init_with_supervisor do
-    PicoCD.Supervisor.start_link
-  end
-
-  defp new_tmp_dir() do
-    path = Path.join([System.tmp_dir, 'picocd_#{System.unique_integer([:positive])}'])
+  defp mk_dir() do
+    path = '#{System.tmp_dir}/picocd_#{System.unique_integer([:positive])}'
     File.mkdir(path)
 
     path
   end
 
-  defp wipe_dir(path) do
-    IO.puts 'Removing #{path}'
+  defp rm_dir(path) do
     File.rm_rf(path)
-  end
-end
-
-defmodule PicoCD.Supervisor do
-  use Supervisor
-
-  def start_link do
-    Supervisor.start_link(__MODULE__, :ok)
-  end
-
-  def init(:ok) do
-    children = [
-      worker(PicoCD.TaskServer, [PicoCD.TaskServer])
-    ]
-
-    supervise(children, strategy: :one_for_one)
   end
 end

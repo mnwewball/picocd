@@ -13,23 +13,29 @@ defmodule PicoCD.Task.Copy do
 
     defstruct [:from, :to]
 
-    def init(name, %{:from => from, :to => to}) do
-        {:ok, %Task{:name => name, :params => %Copy{:from => from, :to => to}}}
+    def init({:cp, {from, to}}) do
+        {:ok, %Copy{:from => from, :to => to}}
+    end
+    def init(_) do
+        {:not_supported}
     end
 end
 
 defimpl PicoCD.UseTask, for: PicoCD.Task.Copy do
     
+    # The module name is just too long, create a scoped, friendlier alias
     alias PicoCD.UseResource, as: Resource
     alias PicoCD.Task.Copy, as: Copy
 
-    def run(%Copy{:from => from, :to => to}, name) do
-        IO.puts 'Running task #{name}'
-        IO.puts 'From #{inspect from}'
-        IO.puts 'To #{inspect to}'
+    def run(%Copy{:from => from, :to => to}, resource_map) do
+        IO.puts 'From #{IO.inspect from}'
+        IO.puts 'To #{IO.inspect to}'
 
-        object = Resource.read(from)
-        Resource.write(to, object)
+        resource_from = Map.get(resource_map, from)
+        resource_to = Map.get(resource_map, to)
+
+        object = Resource.read(resource_from)
+        Resource.write(resource_to, object)
 
         {:ok, object}
     end

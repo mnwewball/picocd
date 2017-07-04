@@ -11,5 +11,7 @@ end
 defprotocol PicoCD.UseResource do
     def read(resource)
     def write(resource, object)
+    def list(resource)
+    def clear(resource)
     def close(resource)
 end

@@ -17,8 +17,8 @@ defmodule PicoCD.Resource.Filesystem do
         {:error, nil}
     """
 
-    alias PicoCD.Resource, as: Resource
     alias PicoCD.Resource.Filesystem, as: Filesystem
+    alias PicoCD.Resource, as: Resource
     
     @behaviour Resource
 
@@ -47,7 +47,15 @@ defimpl PicoCD.UseResource, for: PicoCD.Resource.Filesystem do
         {:ok, {path, object}}
     end
 
+    def list(%Filesystem{:path => path}) do
+        {:ok, path}
+    end
+
+    def clear(%Filesystem{:path => path}) do
+        {:ok, path}
+    end
+
     def close(_) do
-        {:ok, nil}
+        {:ok, true}
     end
 end

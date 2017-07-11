@@ -1,36 +1,36 @@
 defmodule PicoCD.TaskServer do
+    @moduledoc """
+
+    """
+
     use GenServer
 
+    require Logger
+
     @name PicoCD.TaskServer
-    @logger Logger
-    @worker Worker
+    @worker_supervisor TaskWorkerSupervisor
 
     def start_link(resources) do
+        Logger.debug "Starting TaskServer with associated resources #{inspect resources}"
         GenServer.start_link(__MODULE__, resources, name: @name)
     end
 
     def run_task(task) do
-        IO.puts('Attempting #{inspect task}')
+        Logger.debug "About to run task #{inspect task}"
         GenServer.call(@name, task)
     end
 
     def run_task_async(task) do
-        IO.puts('Attempting #{inspect task}')
+        Logger.debug "About to run async task #{inspect task}"
         GenServer.cast(@name, task)
     end
 
     def stop do
+        Logger.debug "Stopping TaskServer"
         GenServer.stop(@name)
     end
 
     def init(resources) do
-        GenEvent.start_link(name: @logger)
-        GenEvent.add_handler(@logger, PicoCD.ConsoleLogger, nil)
-        GenEvent.add_handler(@logger, PicoCD.ANSIConsoleLogger, nil)
-
-        GenEvent.start_link(name: @worker)
-        GenEvent.add_handler(@worker, PicoCD.EventTaskWorker, nil)
-
         resource_map = to_resource_map(resources, %{})
 
         {:ok, resource_map}
@@ -45,8 +45,7 @@ defmodule PicoCD.TaskServer do
         {:noreply, resource_map}
     end
 
-    def handle_info({:DOWN, _, :process, pid, :normal}, resource_map) do
-        IO.puts('Process #{inspect pid} going DOWN')
+    def handle_info({:DOWN, _, :process, _pid, :normal}, resource_map) do
         {:reply, nil, resource_map}
     end
     def handle_info(request, resource_map) do
@@ -55,12 +54,8 @@ defmodule PicoCD.TaskServer do
 
     defp handle_request(task_desc, resource_map) do
         task = create_task(task_desc)
-        GenEvent.sync_notify(@logger, {:log, {:info, DateTime.utc_now(), 'Task created #{inspect task}'}})
-
-        GenEvent.sync_notify(@logger, {:log, {:info, DateTime.utc_now(), 'Creating worker for task #{inspect task}'}})
-        create_event_worker(task, resource_map)
+        
         create_task_worker(task, resource_map)
-        GenEvent.sync_notify(@logger, {:log, {:info, DateTime.utc_now(), 'Worker created for task #{inspect task}'}})
 
         task
     end
@@ -69,13 +64,8 @@ defmodule PicoCD.TaskServer do
         PicoCD.Task.create(task_desc)
     end
 
-    defp create_event_worker(task, resource_map) do
-        GenEvent.notify(@worker, {:run, task, resource_map})
-    end
-
     defp create_task_worker(task, resource_map) do
-        worker_task = Task.async(fn -> PicoCD.DefaultTaskWorker.run(task, resource_map) end)
-        #Task.await(worker_task)
+        Task.Supervisor.start_child(@worker_supervisor, fn -> PicoCD.DefaultTaskWorker.run(task, resource_map) end)
     end
 
     defp to_resource_map([resource | resources], resource_map) do
@@ -90,13 +80,22 @@ end
 defmodule PicoCD.TaskServer.Supervisor do
     use Supervisor
 
+    @worker_supervisor TaskWorkerSupervisor
+
     def start_link(resources) do
         Supervisor.start_link(__MODULE__, resources)
     end
 
     def init(resources) do
         children = [
-            worker(PicoCD.TaskServer, [resources])
+            # Must supervise the only task server 
+            worker(PicoCD.TaskServer, [resources]),
+
+            # Supervise the supervisor for all tasks. We need this supervisor
+            # to always be alive
+            supervisor(Task.Supervisor, [[name: @worker_supervisor, restart: :transient]]),
+
+            Plug.Adapters.Cowboy.child_spec(:http, PicoCD.TaskServer.Router, [], [port: 4001])
         ]
 
         supervise(children, strategy: :one_for_one)

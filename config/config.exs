@@ -18,7 +18,11 @@ use Mix.Config
 #
 # Or configure a 3rd-party app:
 #
-#     config :logger, level: :info
+config :logger, 
+    level: :debug, 
+    backends: [:console],
+    format: "\n$time $metadata[$level] $levelpad$message\n",
+    compile_time_purge_level: :debug
 #
 
 # It is also possible to import configuration files, relative to this

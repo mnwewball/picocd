@@ -23,7 +23,7 @@ defmodule PicoCD.Resource.Filesystem do
     @behaviour Resource
 
     # Currently the only needed fields are the path to the folder. 
-    defstruct name: nil, path: ''
+    defstruct [:name, :path]
 
     def init(name, %{:path => path}) do
         exists? = File.exists?(path)
@@ -36,7 +36,7 @@ defmodule PicoCD.Resource.Filesystem do
 end
 
 defimpl PicoCD.UseResource, for: PicoCD.Resource.Filesystem do
-    
+
     alias PicoCD.Resource.Filesystem, as: Filesystem
 
     def read(%Filesystem{:path => path}) do

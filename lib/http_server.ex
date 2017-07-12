@@ -11,7 +11,7 @@ defmodule PicoCD.TaskServer.Router do
     plug :match
     plug :dispatch
 
-    get "/bu" do
+    get "/pipelines/create" do
 
         res = TaskServer.run_task({:cp, {@resource1, @resource2}})
         Logger.info('Copy #{inspect res}')

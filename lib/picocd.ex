@@ -14,11 +14,6 @@ defmodule PicoCD do
   @resource1 'resource1'
   @resource2 'resource2'
 
-  def main(_args) do
-    task_server_pid = Process.whereis(PicoCD.TaskServer)
-    Logger.info('Task Server: #{inspect task_server_pid}')
-  end
-
   def start(_type, _args) do
 
     # Create two resources
@@ -34,6 +29,12 @@ defmodule PicoCD do
     
     {:ok, supervisor_pid} = TaskServerSupervisor.start_link(resources)
     Logger.info('Supervisor: #{inspect supervisor_pid}')
+
+    supervised_processes = Supervisor.which_children(supervisor_pid);
+    Logger.info('Supervised: #{inspect supervised_processes}')
+
+    task_server_pid = Process.whereis(PicoCD.TaskServer)
+    Logger.info('Task Server: #{inspect task_server_pid}')
 
     {:ok, supervisor_pid}
     

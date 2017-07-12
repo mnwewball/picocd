@@ -5,7 +5,7 @@ defmodule PicoCD.DefaultTaskWorker do
     require Logger
 
     def run(task, resource_map) do
-        Logger.debug "WORKER - #{task}"
+        Logger.debug "WORKER [#{inspect self()}] - #{inspect task}"
         task |> UseTask.run(resource_map)
     end
 end

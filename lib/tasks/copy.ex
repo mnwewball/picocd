@@ -28,9 +28,6 @@ defimpl PicoCD.UseTask, for: PicoCD.Task.Copy do
     alias PicoCD.Task.Copy, as: Copy
 
     def run(%Copy{:from => from, :to => to}, resource_map) do
-        IO.puts 'From #{IO.inspect from}'
-        IO.puts 'To #{IO.inspect to}'
-
         resource_from = Map.get(resource_map, from)
         resource_to = Map.get(resource_map, to)
 

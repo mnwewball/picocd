@@ -28,8 +28,6 @@ defimpl PicoCD.UseTask, for: PicoCD.Task.List do
     alias PicoCD.Task.List, as: List
 
     def run(%List{:resource => resource_name}, resource_map) do
-        IO.puts 'Resource #{resource_name}'
-
         resource = Map.get(resource_map, resource_name)
 
         Resource.list(resource)

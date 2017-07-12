@@ -28,8 +28,6 @@ defimpl PicoCD.UseTask, for: PicoCD.Task.Clear do
     alias PicoCD.Task.Clear, as: Clear
 
     def run(%Clear{:resource => resource_name}, resource_map) do
-        IO.puts 'Resource #{resource_name}'
-
         resource = Map.get(resource_map, resource_name)
 
         Resource.clear(resource)

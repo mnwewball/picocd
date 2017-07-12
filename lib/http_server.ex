@@ -7,7 +7,7 @@ defmodule PicoCD.TaskServer.Router do
     @resource1 'resource1'
     @resource2 'resource2'
 
-    #plug Plug.Logger
+    plug Plug.Logger
     plug :match
     plug :dispatch
 
@@ -26,7 +26,6 @@ defmodule PicoCD.TaskServer.Router do
         Logger.info('List #{inspect res}')
 
         conn
-        |> put_resp_content_type('text/plain')
         |> send_resp(200, 'Up')
     end
 
